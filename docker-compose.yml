@@ -1,0 +1,368 @@
+version: '2'
+services:
+
+##################################################################
+# Mountages des "--volumes_from" (aspirateur,waiting,media,perso)
+##################################################################
+
+ nerwysh_aspirateur:
+   image: "busybox"
+   container_name: 'nerwysh_aspirateur'
+   network_mode: "bridge"
+   volumes:
+    - '/home/docker/partage/aspirateur:/nerwysh_aspirateur'
+
+ nerwysh_waiting:
+   image: "busybox"
+   container_name: 'nerwysh_waiting'
+   network_mode: "bridge"
+   volumes:
+    - '/home/docker/partage/waiting:/nerwysh_waiting'
+
+ nerwysh_media:
+   image: "busybox"
+   container_name: 'nerwysh_media'
+   network_mode: "bridge"
+   volumes:
+    - '/home/docker/partage/media:/nerwysh_media'
+
+ nerwysh_local:
+   image: "busybox"
+   container_name: 'nerwysh_local'
+   network_mode: "bridge"
+   volumes:
+    - '/home/docker/partage/local:/nerwysh_local'
+
+ nerwysh_ovpn_data:
+   image: "busybox"
+   container_name: 'nerwysh_ovpn_data'
+   network_mode: "bridge"
+   volumes:
+    - '/home/docker/data/openvpn_data:/etc/openvpn'
+
+
+
+##################################################################
+# Applicatifs PLEX
+# Le .htpasswd doit etre copie avant dans : /etc/nginx/passwd/.htpasswd avec les droits pour www-data
+# Le plugin T411 pour couchpotato-app doit etre copie (custom-plugins) avant le "docker start"
+##################################################################
+
+##################################################################
+ plex-app:
+   image: "linuxserver/plex"
+   container_name: 'plex-app'
+   network_mode: "bridge"
+   volumes:
+     - '/etc/localtime:/etc/localtime:ro'
+     - '/home/docker/conf/plex_app:/config'
+   environment:
+     - VERSION=plexpass
+     - PUID=1014
+     - PGID=999
+   volumes_from:
+     - nerwysh_local
+     - nerwysh_media
+   ports:
+     - "28020:32400"
+
+##################################################################
+ couchpotato-app:
+   image: "linuxserver/couchpotato"
+   container_name: 'couchpotato-app'
+   network_mode: "bridge"
+   volumes:
+     - '/etc/localtime:/etc/localtime:ro'
+     - '/home/docker/conf/couchpotato_app:/config'
+   depends_on:
+     - plex-app
+   external_links:
+     - plex-app
+   environment:
+     - PGID=999
+     - PUID=1014
+   volumes_from:
+     - nerwysh_media
+     - nerwysh_waiting
+     - nerwysh_aspirateur
+   ports:
+     - "127.0.0.1:28023:5050"
+    
+##################################################################
+ sickragefr-app:
+   image: "linuxserver/sickrage"
+   container_name: 'sickragefr-app'
+   network_mode: "bridge"
+   volumes:
+     - '/etc/localtime:/etc/localtime:ro'
+     - '/home/docker/conf/sickragefr_app:/config'
+   depends_on:
+     - plex-app
+   external_links:
+     - plex-app
+   environment:
+     - PGID=999
+     - PUID=1014
+     - EDGE=1
+   volumes_from:
+     - nerwysh_media
+     - nerwysh_waiting
+     - nerwysh_aspirateur
+   ports:
+     - "127.0.0.1:28017:8081"
+
+##################################################################
+ sickrageen-app:
+   image: "linuxserver/sickrage"
+   container_name: 'sickrageen-app'
+   network_mode: "bridge"
+   volumes:
+     - '/etc/localtime:/etc/localtime:ro'
+     - '/home/docker/conf/sickrageen_app:/config'
+   depends_on:
+     - plex-app
+   external_links:
+     - plex-app
+   environment:
+     - PGID=999
+     - PUID=1014
+     - EDGE=1
+   volumes_from:
+     - nerwysh_media
+     - nerwysh_waiting
+     - nerwysh_aspirateur
+   ports:
+     - "127.0.0.1:28019:8081"
+
+##################################################################
+ plexpy-app:
+   image: "linuxserver/plexpy"
+   container_name: 'plexpy-app'
+   network_mode: "bridge"
+   depends_on:
+     - plex-app
+   external_links:
+     - plex-app
+   environment:
+     - PGID=999
+     - PUID=1014
+   volumes:
+     - '/etc/localtime:/etc/localtime:ro'
+     - '/home/docker/conf/plexpy_app:/config:rw'
+     - '/home/docker/conf/plex_app/Library/Application Support/Plex Media Server/Logs:/logs:rw'
+   ports:
+     - "127.0.0.1:28021:8181"
+
+##################################################################
+ plexrequests-app:
+   image: "aptalca/docker-plexrequests"
+   container_name: 'plexrequests-app'
+   network_mode: "bridge"
+   volumes:
+     - '/etc/localtime:/etc/localtime:ro'
+     - '/home/docker/conf/plexrequests_app:/config:rw'
+   depends_on:
+     - sickragefr-app
+     - couchpotato-app
+   external_links:
+     - sickragefr-app
+     - couchpotato-app
+   environment:
+     - BRANCH=master
+   ports:
+     - "127.0.0.1:28022:3000"
+
+##################################################################
+ rutorrent-nerwysh-app:
+   image: "diameter/rtorrent-rutorrent"
+   container_name: 'rutorrent-nerwysh-app'
+   network_mode: "bridge"
+   volumes:
+    - '/home/docker/data/rutorrent_nerwysh_app:/downloads'
+   volumes_from:
+     - nerwysh_aspirateur
+     - nerwysh_waiting
+   ports:
+     - "28004:49160/udp"
+     - "28005:49161"
+     - "127.0.0.1:28006:80"
+   environment:
+     - USR_ID=1014
+     - GRP_ID=999
+     - TZ=Europe/Paris
+
+##################################################################
+ rutorrent-couchpotato-app:
+   image: "diameter/rtorrent-rutorrent"
+   container_name: 'rutorrent-couchpotato-app'
+   network_mode: "bridge"
+   volumes:
+     - '/home/docker/data/rutorrent_couchpotato_app:/downloads'
+   volumes_from:
+     - nerwysh_media
+     - nerwysh_waiting
+     - nerwysh_aspirateur
+   ports:
+     - "28009:49160/udp"
+     - "28010:49161"
+     - "127.0.0.1:28008:80"
+   environment:
+     - USR_ID=1014
+     - GRP_ID=999
+     - TZ=Europe/Paris
+
+##################################################################
+ rutorrent-sickragefr-app:
+   image: "diameter/rtorrent-rutorrent"
+   container_name: 'rutorrent-sickragefr-app'
+   network_mode: "bridge"
+   volumes:
+     - '/home/docker/data/rutorrent_sickragefr_app:/downloads'
+   volumes_from:
+     - nerwysh_aspirateur
+     - nerwysh_waiting
+   ports:
+     - "28012:49160/udp"
+     - "28013:49161"
+     - "127.0.0.1:28011:80"
+   environment:
+     - USR_ID=1014
+     - GRP_ID=999
+     - TZ=Europe/Paris
+
+
+##################################################################
+ rutorrent-sickrageen-app:
+   image: "diameter/rtorrent-rutorrent"
+   container_name: 'rutorrent-sickrageen-app'
+   network_mode: "bridge"
+   volumes:
+     - '/home/docker/data/rutorrent_sickrageen_app:/downloads'
+   volumes_from:
+     - nerwysh_aspirateur
+     - nerwysh_waiting
+   ports:
+     - "28015:49160/udp"
+     - "28016:49161"
+     - "127.0.0.1:28014:80"
+   environment:
+     - USR_ID=1014
+     - GRP_ID=999
+     - TZ=Europe/Paris
+
+
+##################################################################
+# Installation des applications PERSO
+# Prerequis : Certificats letsencrypt /etc/letsencrypt/live/domain.tld/fullchain.pem et /etc/letsencrypt/live/domain.tld/privkey.pem
+##################################################################
+
+##################################################################
+ muximux-app:
+   image: "linuxserver/muximux"
+   container_name: 'muximux-app'
+   network_mode: "bridge"
+   volumes:
+    - '/home/docker/data/muximux-app:/config'
+   environment:
+    - PGID=1000
+    - PUID=1000
+    - TZ=Europe/Paris
+   ports:
+    - "127.0.0.1:28024:80"
+
+##################################################################
+ gateone-app:
+   image: "liftoff/gateone"
+   container_name: 'gateone-app'
+   network_mode: "bridge"
+   volumes:
+     - '/etc/letsencrypt/live/domain.tld/fullchain.pem:/etc/gateone/ssl/certificate.pem:ro'
+     - '/etc/letsencrypt/live/domain.tld/privkey.pem:/etc/gateone/ssl/keyfile.pem:ro'
+   ports:
+     - "127.0.0.1:28007:8000"
+
+##################################################################
+ mediawiki-app:
+   image: "simplyintricate/mediawiki"
+   container_name: 'mediawiki-app'
+   network_mode: "bridge"
+   volumes:
+     - '/home/docker/conf/mediawiki_app/LocalSettings.php:/usr/share/nginx/html/LocalSettings.php:ro'
+     - '/home/docker/data/mediawiki_app/images:/usr/share/nginx/html/images'
+     - '/home/docker/data/mediawiki_app/extensions:/tmp/extensions'
+   ports:
+     - "127.0.0.1:28002:80"
+   depends_on:
+     - mediawiki-db
+   external_links:
+     - mediawiki-db
+
+##################################################################
+ mediawiki-db:
+   image: "mysql"
+   container_name: 'mediawiki-db'
+   network_mode: "bridge"
+   volumes:
+     - '/home/docker/data/mediawiki_db:/var/lib/mysql'
+   environment:
+     - MYSQL_ROOT_PASSWORD=password
+     - MYSQL_DATABASE=my_wiki
+
+##################################################################
+ # netdata-app:
+ #  image: "titpetric/netdata"
+ #  container_name: 'netdata-app'
+ #  network_mode: "bridge"
+ #  volumes:
+ #    - '/etc/localtime:/etc/localtime:ro'
+ #    - '/proc:/host/proc:ro'
+ #    - '/sys:/host/sys:ro'
+ #  ports:
+ #    - "28037:19999"
+ #  cap_add:
+ #    - SYS_PTRACE
+ #  privileged: true
+
+##################################################################
+ owncloud-app:
+   image: "owncloud"
+   container_name: 'owncloud-app'
+   network_mode: "bridge"
+   volumes:
+     - '/home/docker/conf/owncloud_app:/var/www/html/config'
+     - '/home/docker/data/owncloud_app:/var/www/html/data'
+   depends_on:
+     - owncloud-db
+   volumes_from:
+     - nerwysh_aspirateur
+     - nerwysh_media
+     - nerwysh_waiting
+     - nerwysh_local
+   ports:
+     - "28001:80"
+   external_links:
+     - owncloud-db
+
+##################################################################
+ owncloud-db:
+    image: "mysql"
+    container_name: 'owncloud-db'
+    network_mode: "bridge"
+    volumes:
+     - '/home/docker/data/owncloud_db:/var/lib/mysql'
+    environment:
+     - MYSQL_ROOT_PASSWORD=password
+     - MYSQL_DATABASE=owncloud
+
+##################################################################
+ openvpn-app:
+ 
+    image: "kylemanna/openvpn"
+    container_name: 'openvpn-app'
+    network_mode: "bridge"
+    volumes_from:
+     - nerwysh_ovpn_data
+    cap_add:
+     - NET_ADMIN
+    ports:
+     - "1194:1194/udp"
