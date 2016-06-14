@@ -1,20 +1,17 @@
 #!/bin/sh
 
-######################## PrÈ-requis ########################
-# Avoir un domain et les sous-domaines suivants :
+######################## Pr√©-requis ########################
+# Avoir un domaine et les sous-domaines suivants :
 # domain.tld,cloud.domain.tld,couchpotato.domain.tld,gateone.domain.tld,plexpy.domain.tld,plex.domain.tld
 # rutorrent.domain.tld,rutorrent.couchpotato.domain.tld,rutorrent.sickrageen.domain.tld,
 # rutorrent.sickragefr.domain.tld,sickrageen.domain.tld,sickragefr.domain.tld, plexrequests.domain.tld
-#
-# Domaines facutatifs : docker.domain.tld,logs.domain.tld,stats.domain.tld ,vpn.domain.tld
-#
 ######################################################
 
 
 ######################################################
 ######################################################
 echo "------------------------------------------------------";
-echo "- Initialisation complÈte du systÈme";
+echo "- Initialisation compl√©te du syst√©me";
 echo "------------------------------------------------------";
 echo "";
 ######################################################
@@ -43,10 +40,10 @@ read fichier
 	then
 		echo ""
 	else
-		echo "Merci de faire le nÈcessaire !"
+		echo "Merci de faire le n√©cessaire !"
 		exit
 	fi
-echo -n " RÈpertoire d'installation ? : "
+echo -n " R√©pertoire d'installation ? : "
 read base_dir
 echo -n " Domaine ? : "
 read domain
@@ -54,10 +51,10 @@ echo -n " Login pour serveur web ? : "
 read login
 echo -n " Pass pour serveur web ? : "
 read -s pass
-echo ""
+echo "";
 echo -n " Utilisez-vous amazon pour le stockage (yes/no)? : "
 read amazon
-
+echo "";
 	
 ######################################################
 ######################################################
@@ -70,7 +67,7 @@ sous_domains=$(cat sous_domaines.letsencrypt)
 . /etc/profile
 dcp="docker-compose -f ${base_dir}docker/docker_compose/docker-compose.yml"
 echo "alias dcp=\"docker-compose -f ${base_dir}docker/docker_compose/docker-compose.yml\"">> /root/.bashrc
-
+echo "";
 ######################################################
 ######################################################
 
@@ -79,7 +76,7 @@ cd ${base_dir};
 ######################################################
 ######################################################
 echo "------------------------------------------------------";
-echo "- Installation et mise ‡ jour des paquets";
+echo "- Installation et mise √† jour des paquets";
 echo "------------------------------------------------------";
 echo "";
 ######################################################
@@ -106,7 +103,7 @@ echo "";
 	service docker start
 	docker run hello-world && echo " -> installation de Docker OK !" || " -> installation de Docker KO !";
 echo "";
-
+echo "";
 ######################################################
 echo " -> installation de Docker-compose ..."
 	apt-get -y install python-pip
@@ -150,7 +147,7 @@ echo "";
 	apt-get -y install git bc
 	git clone https://github.com/letsencrypt/letsencrypt /opt/letsencrypt && echo " -> installation de Letsencrypt OK !" || echo " -> installation de Letsencrypt KO !"
 echo "";
-echo " -> GÈnÈration des certificats ..."
+echo " -> G√©n√©ration des certificats ..."
 echo "";
 	service nginx stop
 	/opt/letsencrypt/letsencrypt-auto certonly --standalone --agree-tos --no-redirect --text -d $domain,$sous_domains && echo " -> Certificats OK !" || " -> installation de Certificats KO !"
@@ -182,10 +179,10 @@ cd ${base_dir};
 			echo " -> Arborescence OK"
 		else
 		echo "------------------------------------------------------";
-		echo "- Restauration des anciennes donnÈes";
+		echo "- Restauration des anciennes donn√©es";
 		echo "------------------------------------------------------";
 		echo "";
-		echo "VÈrification de l'existence de l'archive";
+		echo "V√©rification de l'existence de l'archive";
 		echo "";
 	
 			if [ -e "$/backup.tar.gz" ]
@@ -217,7 +214,7 @@ echo "------------------------------------------------------";
 if [ "$amazon" = "yes" ]	
 	then
 			
-			echo "Montage du rÈpertoire /home/docker/partage/.amazon : "
+			echo "Montage du r√©pertoire /home/docker/partage/.amazon : "
 			echo ""
 
 			acd_cli init
@@ -278,7 +275,7 @@ fi
 ######################################################
 ######################################################
 echo "------------------------------------------------------";
-echo "- DÈploiement des Applications";
+echo "- D√©ploiement des Applications";
 echo "------------------------------------------------------";
 ######################################################
 ######################################################
@@ -306,7 +303,7 @@ echo "------------------------------------------------------";
 ######################################################
 
 cd $install_dir;
-
+echo "";
 echo "Configuration de Nginx..."
 echo ""
 sed -i "s/domain.tld/$domain/g" *.conf
@@ -314,5 +311,28 @@ cp *.conf ${base_dir}docker/conf/nginx_local/
 cp -s ${base_dir}docker/conf/nginx_local/* /etc/nginx/sites-enabled/
 PASSWORD="$pass";SALT="$(openssl rand -base64 3)";SHA1=$(printf "$PASSWORD$SALT" | openssl dgst -binary -sha1 | sed 's#$#'"$SALT"'#' | base64);printf "$login:{SSHA}$SHA1\n" > ${base_dir}docker/keys/.htpasswd
 service nginx reload
+echo "";
+
+
+######################################################
+######################################################
+echo "------------------------------------------------------";
+echo "- Installation termin√©e";
+echo "------------------------------------------------------";
+######################################################
+######################################################
+echo "------------------------------------------------------";
+echo "------------------------------------------------------";
+echo "";
+echo " Login WEB : $login";
+echo "";
+echo " Pass WEB : $pass";
+echo "";
+echo " Pass MYSQL : $pass";
+echo "";
+echo " Pass ENCFS : $password";
+echo "";
+echo "------------------------------------------------------";
+echo "------------------------------------------------------";
 
 
